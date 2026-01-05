@@ -132,3 +132,13 @@ void multi_tap_input_init(void)
     LOG_INF("Multi-Tap init: click=%dms hold=%dms", 
             click_timeout_ms, hold_duration_ms);
 }
+
+void multi_tap_input_reset(void)
+{
+    k_timer_stop(&click_timer);
+    k_timer_stop(&hold_timer);
+    click_count = 0;
+    current_state = STATE_IDLE;
+    is_holding = false;
+    LOG_INF("MultiTap Reset");
+}

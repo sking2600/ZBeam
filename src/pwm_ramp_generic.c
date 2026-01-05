@@ -17,13 +17,11 @@ static const struct pwm_dt_spec *pwm_dev;
 static uint8_t current_brightness;
 static bool ramp_active;
 
-/* PWM period in ns - should match device tree */
-#define PWM_PERIOD_NS 200000U
-
 static uint32_t brightness_to_pulse_ns(uint8_t brightness)
 {
     uint16_t duty = pwm_ramp_table[brightness];
-    return ((uint32_t)duty * PWM_PERIOD_NS) / RAMP_TABLE_MAX_DUTY;
+    /* Scale from table (max 8191) to DTS period */
+    return ((uint64_t)duty * pwm_dev->period) / RAMP_TABLE_MAX_DUTY;
 }
 
 int pwm_ramp_init(const struct pwm_dt_spec *pwm_spec)
@@ -47,7 +45,7 @@ void pwm_ramp_set_brightness(uint8_t brightness)
     if (pwm_dev == NULL) return;
     
     uint32_t pulse_ns = brightness_to_pulse_ns(brightness);
-    pwm_set_dt(pwm_dev, PWM_PERIOD_NS, pulse_ns);
+    pwm_set_dt(pwm_dev, pwm_dev->period, pulse_ns);
     current_brightness = brightness;
 }
 

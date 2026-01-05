@@ -178,35 +178,29 @@ At floor → Reverse direction (or blink)
 
 ---
 
-## Button Mapping Summary
+## Feature Quick Reference (Implemented)
+*Current as of 2024-12-19*
 
 ### From OFF
-
-| Action | Simple Mode | Advanced Mode |
-|--------|-------------|---------------|
-| 1C | ON (memory) | ON (memory) |
-| 1H | Moon → Ramp up | Moon → Ramp up |
-| 2C | Turbo | Turbo |
-| 3C | Battery check | Battery check |
-| 3H | — | Strobe modes |
-| 4C | Lockout | Lockout |
-| 5C | — | Momentary |
-| 10H | Adv UI toggle | Simple UI toggle |
-| 13H | — | Factory reset |
+| Trigger | Action | Description | Notes |
+| :--- | :--- | :--- | :--- |
+| **1C** | **ON** | Turn On to Memorized Level | Restores last used brightness |
+| **1H** | **Moon** | Start at Floor Level, then Ramp Up | Release to lock brightness |
+| **2C** | **Turbo** | Jump to Ceiling Level | Max brightness immediately |
+| **3C** | **Battery Check** | Show Battery Status | *Currently Placeholder Blink* |
+| **3H** | **Strobe Mode** | Enter Strobe Loop (`NODE_STROBE`) | **Hold** to adjust frequency <br> **2C** to toggle Party Mode |
+| **4C** | **Lockout** | Enter Lockout Mode | **1H** for Momentary Moon <br> **4C** to Unlock |
+| **5C** | **Factory Reset** | Wipe Settings & Reboot | Resets all config to defaults |
 
 ### From ON
-
-| Action | Simple Mode | Advanced Mode |
-|--------|-------------|---------------|
-| 1C | OFF | OFF |
-| 1H | Ramp up | Ramp up |
-| 2C | Turbo | Turbo |
-| 2H | Ramp down | Ramp down |
-| 3C | — | Smooth/Step toggle |
-| 3H | — | Tint ramp |
-| 4C | Lockout | Lockout |
-| 5H | — | Sunset timer |
-| 7H | — | Ramp config |
+| Trigger | Action | Description | Notes |
+| :--- | :--- | :--- | :--- |
+| **1C** | **OFF** | Turn Off | Saves current brightness |
+| **1H** | **Ramp Up** | Increase Brightness | Release to lock |
+| **2H** | **Ramp Down** | Decrease Brightness | Release to lock |
+| **2C** | **Turbo** | Jump to Ceiling Level | Double-click for max power |
+| **4C** | **Strobe Mode** | **Impl** | Variable Hz (1H shift). Party Strobe. **Configurable Waveform (Sine/Square)** via Kconfig. |
+| **5H** | **Config Menu** | **Impl** | Global config system. Ramp Floor/Ceiling configurable. <br> *Temporary Mapping for Testing* <br> 1. Blinks Item # <br> 2. Buzzes (Wait) <br> 3. Click to set value |
 
 ---
 
@@ -214,6 +208,34 @@ At floor → Reverse direction (or blink)
 
 > [!IMPORTANT]
 > **Design Priority**: Keep the FSM flexible so end users can easily create custom UIs.
+
+## Roadmap & Next Steps
+
+### Phase 3: Persistence & Calibration (Immediate)
+- [ ] **NVS Wiring**: Connect the generic Config Menu to actual NVS read/write operations to make settings permanent.
+- [ ] **Battery Calibration**: Implement voltage correction factor in Config Menu.
+- [ ] **Factory Reset**: Verify full wipe and reboot behavior.
+- [ ] **ADC calibration**: if relying on an unreliable power source then need to calibrate ADC before every reading using an internal Vref.
+
+
+### Phase 4: Hardware Optimization
+- [ ] **LEDC Hardware Fading (ESP32)**:
+  - Create `pwm_ramp_esp32_hw.c` to use `ledc_set_fade_with_time` and `ledc_fade_start`.
+  - Replace manual timer-based soft-PWM interpolation.
+  - Fixes "steppy" ramping at low duty cycles and enables higher frequencies.
+- [ ] **Strobe Hardware Offload**:
+  - Investigate using hardware timers/pattern generators for strobe to reduce CPU interrupt load.
+- [ ] **Deep Sleep & Power Management**:
+  - Implement `sys_power_management` hooks.
+  - Suspend peripherals (NVS, Timers) on `NODE_OFF`.
+  - Goal: <20uA standby current on CH32V (Logic only).
+- [ ] **DMA Ramping (Stub/Plan)**: 
+  - Design architecture for DMA-based ramping on CH32V (future proofing).
+
+### Phase 5: Advanced Features
+- [ ] **Thermal Regulation**: PID loop to throttle brightness based on temperature.
+- [ ] **Candle Mode**: Randomized candle flicker effect.
+- [ ] **Sunset Timer**: Auto-dim to off over 30 minutes.
 
 ### Node Structure
 Each state is a self-contained `fsm_node` struct with:

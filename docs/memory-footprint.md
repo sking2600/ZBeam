@@ -37,28 +37,20 @@ CONFIG_PRINTK=n
 
 ---
 
-## CH32X035 Estimate
+### Actual Build (CH32V303VCT6 - ZBeam Core, No NVS)
 
-The CH32X035 has significantly lower baseline overhead:
-- No WiFi/BT stack (ESP32-C3 has ROM IDF integration)
-- Simpler HAL (no GPIO matrix routing)
-- Smaller kernel footprint
+| Component | Code (Flash) | RAM |
+|-----------|--------------|-----|
+| Base Logic (Core only) | 27.7 KB | 14.8 KB |
+| With USB Stack (Config) | 29.0 KB | 14.9 KB |
+| **Delta (USB Overhead)** | **+1.3 KB** | **+0.1 KB** |
 
-### Estimated Breakdown (CH32X035)
+> [!NOTE]
+> - **USB Overhead**: Adding `CONFIG_USB_DEVICE_STACK` added very little overhead (1.3KB).
+> - **Total Footprint**: ~29KB Flash / ~15KB RAM is well within the 62KB/20KB limit of the CH32X035.
+> - **Conclusion**: Even with USB enabled, we have >30KB (50%) Flash remaining for NVS, PD logic, and more features.
 
-| Component | ESP32-C3 | CH32X035 Est. |
-|-----------|----------|---------------|
-| Kernel core | ~25 KB | ~8-10 KB |
-| HAL/drivers | ~30 KB | ~10-15 KB |
-| Flash driver + ZMS | ~15 KB | ~8-10 KB |
-| Application code | ~10 KB | ~10 KB |
-| Strings/rodata | ~20 KB | ~5-8 KB |
-| Thread stacks | ~10 KB | ~5-8 KB |
-| **Total Flash** | ~134 KB | ~45-55 KB |
-| **Total RAM** | ~54 KB | ~18-25 KB |
-
-> [!TIP]
-> CH32X035 with 62KB flash / 20KB RAM should fit ZBeam with room to spare.
+---
 
 ---
 

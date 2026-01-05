@@ -44,7 +44,26 @@
   - **Auto-Reset/DFU**: While `esptool` attempts to reset via DTR/RTS, the "Super Mini" board often fails to reset automatically after flashing.
     - **Action**: You must manually press the **RESET** button on the board after `west flash` completes to fail-safe into the application.
   - **No Output?**: If you don't see output, the console might be initializing before your terminal connects. Use `CONFIG_LOG_MODE_IMMEDIATE=y` or add a startup delay.
-### Build and Configuration
+### Build
+### 6. Changing Timer Frequency Live (Zephyr)
+When implementing a Strobe light where frequency changes dynamically (frequency sweep), simply calling `k_timer_start` on an already running periodic timer to change its period DOES NOT work reliably if done from within another ISR (like a ramp timer) or sometimes just glitches.
+**Solution**: Use a **Recursive One-Shot Timer**.
+- Configure `k_timer` with `duration=X` and `period=0` (one-shot).
+- In the timer callback, calculate the *next* delay and re-arm the timer with `k_timer_start(timer, K_MSEC(new_delay), K_NO_WAIT)`.
+- This ensures the frequency updates on every cycle without fighting an active periodic schedule.
+
+### 7. C Structure Visibility in Forward Declarations
+If you have a function forward declaration that uses a struct type in its prototype (e.g. `void func(struct config_item *ptr)`), that struct MUST be defined *before* the function prototype, or at least forward declared as `struct config_item;`. Otherwise, the compiler treats it as a scoped incomplete type, and it will conflict with the actual definition later.
+```c
+/* WRONG */
+void func(struct Foo *f); 
+struct Foo { int x; }; /* "conflicting types" error */
+
+/* RIGHT */
+struct Foo { int x; };
+void func(struct Foo *f);
+```
+and Configuration
 - **Application Kconfig**: If you define a `Kconfig` in your project root, it overrides the default loading mechanism. You *must* add `source "Kconfig.zephyr"` at the end to pull in the core Zephyr configuration options (like `CONFIG_GPIO`, `CONFIG_SERIAL`).
 - **Device Tree Lookups**: `DT_NODELABEL(pwmleds)` relies on the label existing in the final generated DTS. If that fails, `DT_COMPAT_GET_ANY_STATUS_OKAY(pwm_leds)` is a robust fallback to find *any* enabled node of that compatible type.
 - **Subsystem Dependencies**: enabling `CONFIG_LED_PWM` requires `CONFIG_LED=y` to be explicitly set.

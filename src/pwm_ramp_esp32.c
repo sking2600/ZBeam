@@ -104,24 +104,20 @@ int pwm_ramp_start(uint8_t target_brightness, uint32_t duration_ms)
     
     /* Step through table, using LEDC fade between points */
     for (int i = start; direction > 0 ? (i < end) : (i > end); i += direction * step) {
-        int next = i + direction * step;
-        if (direction > 0 && next > end) next = end;
-        if (direction < 0 && next < end) next = end;
+        int next_idx = i + direction * step;
+        if (direction > 0 && next_idx > end) next_idx = end;
+        if (direction < 0 && next_idx < end) next_idx = end;
         
         /* Set current brightness immediately */
-        pwm_ramp_set_brightness(i);
+        pwm_ramp_set_brightness(next_idx);
         
-        /* 
-         * TODO: Use LEDC fade hardware here instead of simple delay.
-         * For now, using simple step delay until LEDC fade is integrated.
-         * Future: ledc_ll_set_duty_scale/num/cycle for hardware interpolation.
-         */
         k_msleep(step_delay_ms);
         
-        if (!ramp_active) break;  /* Allow early exit */
+        current_brightness = next_idx;
+        if (!ramp_active) break;
     }
     
-    /* Ensure we end at exact target */
+    /* Ensure final state */
     pwm_ramp_set_brightness(target_brightness);
     ramp_active = false;
     

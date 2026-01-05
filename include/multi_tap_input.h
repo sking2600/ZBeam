@@ -22,4 +22,7 @@ void multi_tap_input_init(void);
  */
 void multi_tap_configure(uint32_t click_ms, uint32_t hold_ms);
 
+/* Internal state reset for testing */
+void multi_tap_input_reset(void);
+
 #endif /* MULTI_TAP_INPUT_H */

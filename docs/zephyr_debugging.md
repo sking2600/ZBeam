@@ -60,3 +60,29 @@ uint32_t gpio_sel = sys_read32(0x60004574);  // GPIO8_FUNC_OUT_SEL
 printk("GPIO8 signal: %d (should be 45 for LEDC)\n", gpio_sel & 0xFF);
 ```
 
+
+## 5. Flashing and Resetting
+
+### 5.1 Basic Flashing
+The standard method to flash the build to the device is:
+```bash
+west flash --esp-device /dev/ttyACM0
+```
+*(Replace `/dev/ttyACM0` with your actual port. On Linux it is usually `ttyACM0` or `ttyUSB0`)*.
+
+### 5.2 ESP32-C3 SuperMini Quirks
+The "SuperMini" board often fails to auto-reset into bootloader mode via DTR/RTS signals.
+**Symptoms**:
+*   `Connecting...` times out.
+*   `A fatal error occurred: Failed to connect to ESP32-C3: No serial data received.`
+*   Log output stops but flash doesn't start.
+
+**Solution (Manual Bootloader Entry)**:
+1.  Hold the **BOOT** button (usually the one labeled "9" or near the USB port).
+2.  Press and release the **RESET** button.
+3.  Release the **BOOT** button.
+4.  Run `west flash` again.
+
+**Solution (After Flashing)**:
+*   The board may not auto-reset into the application after flashing.
+*   If the console is silent or the LED doesn't start, press the **RESET** button once.

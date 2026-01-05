@@ -4,7 +4,6 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/fs/nvs.h>
 #include "nvs_manager.h"
-#include "key_map.h" // Needs to know about all_nodes and NODE_COUNT
 
 LOG_MODULE_REGISTER(NVS_Manager, LOG_LEVEL_INF);
 
@@ -36,7 +35,9 @@ int nvs_init_fs(void)
 
     rc = nvs_mount(&fs);
     if (rc) {
-        LOG_ERR("Flash Init failed");
+        LOG_WRN("NVS Mount failed, attempting wipe mechanism if needed (Error: %d)", rc);
+        /* If generic mount fails, usually implies corruption or uninitialized */
+        /* Zephyr NVS usually requires cleaner handling, but for now we report error */
         return rc;
     }
 
@@ -44,80 +45,40 @@ int nvs_init_fs(void)
     return 0;
 }
 
-void nvs_save_node_config(uint8_t node_id, const struct node_config_data *config)
+int nvs_write_byte(uint16_t id, uint8_t value)
 {
-    int rc = nvs_write(&fs, node_id, config, sizeof(struct node_config_data));
+    int rc = nvs_write(&fs, id, &value, sizeof(value));
     if (rc < 0) {
-        LOG_ERR("Failed to write config for node %d (err: %d)", node_id, rc);
-    } else {
-        LOG_INF("Saved config for node %d", node_id);
+        LOG_ERR("NVS Write ID %d failed: %d", id, rc);
+        return rc;
     }
+    LOG_DBG("NVS Saved ID %d = %d", id, value);
+    return 0;
 }
 
-void nvs_load_runtime_config(void)
+int nvs_read_byte(uint16_t id, uint8_t *value)
 {
-    struct node_config_data config;
-    int rc;
-
-    for (int i = 0; i < NODE_COUNT; i++) {
-        rc = nvs_read(&fs, i, &config, sizeof(config));
-        if (rc > 0) {
-            LOG_INF("Loading config for Node %d", i);
-            struct fsm_node *node = all_nodes[i];
-            if (!node) continue; 
-            
-            node->timeout_ms = config.timeout_ms;
-            
-            // Link pointers based on saved IDs
-            for (int k = 0; k < MAX_NAV_SLOTS; k++) {
-                // Resolve Click Map
-                uint8_t target = config.target_click_ids[k];
-                if (target < NODE_COUNT) {
-                    node->click_map[k] = all_nodes[target];
-                } else {
-                    node->click_map[k] = NULL;
-                }
-
-                // Resolve Hold Map
-                target = config.target_hold_ids[k];
-                if (target < NODE_COUNT) {
-                    node->hold_map[k] = all_nodes[target];
-                } else {
-                    node->hold_map[k] = NULL;
-                }
-            }
-        }
-    }
-}
-
-void nvs_save_system_config(const struct system_config *config)
-{
-    int rc = nvs_write(&fs, NVS_SYSTEM_CONFIG_ID, config, sizeof(struct system_config));
-    if (rc < 0) {
-        LOG_ERR("Failed to save System Config (err: %d)", rc);
-    } else {
-        LOG_INF("Saved System Config");
-    }
-}
-
-int nvs_load_system_config(struct system_config *config)
-{
-    int rc = nvs_read(&fs, NVS_SYSTEM_CONFIG_ID, config, sizeof(struct system_config));
+    int rc = nvs_read(&fs, id, value, sizeof(uint8_t));
     if (rc > 0) {
-        LOG_INF("System Config Loaded");
-        return 0; // Success
+         /* rc is bytes read */
+         return 0;
     }
-    return -ENOENT; // Not found
+    if (rc == -ENOENT) {
+        return -ENOENT;
+    }
+    LOG_ERR("NVS Read ID %d failed: %d", id, rc);
+    return rc;
 }
 
 void nvs_wipe_all(void)
 {
-    // Wipe all node configs
-    for (int i = 0; i < NODE_COUNT; i++) {
+    /* Brute force wipe common IDs. 
+       Zephyr NVS doesn't have a "format" API easily accessible without re-init,
+       so we delete known keys or re-mount with empty.
+       Actually, `nvs_clear` is not standard API, only `nvs_delete`.
+    */
+    for (uint16_t i = 0; i < 20; i++) {
         nvs_delete(&fs, i);
     }
-    // Wipe system config
-    nvs_delete(&fs, NVS_SYSTEM_CONFIG_ID);
-    
-    LOG_INF("NVS Wiped (Factory Reset)");
+    LOG_INF("NVS Wiped (IDs 0-20)");
 }

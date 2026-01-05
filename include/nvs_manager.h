@@ -14,56 +14,23 @@
 
 #define NVS_SYSTEM_CONFIG_ID 0xFF // Special ID for system config
 
-/**
- * @brief Global system configuration settings.
- */
-struct system_config {
-    uint32_t click_timeout_ms;   ///< Click detection timeout.
-    uint32_t hold_duration_ms;   ///< Hold detection duration.
-    uint16_t monitor_key_code;   ///< Input event code to monitor.
-};
+/* Feature Config IDs (0-100) */
+#define NVS_ID_RAMP_FLOOR    1
+#define NVS_ID_RAMP_CEILING  2
+#define NVS_ID_MEM_BRIGHTNESS 3
 
-/**
- * @brief Initialize the NVS file system.
- * @return 0 on success, negative error code otherwise.
- */
+#ifdef CONFIG_ZBEAM_NVS_ENABLED
+/* Real Prototypes */
 int nvs_init_fs(void);
-
-/**
- * @brief Save a single node's configuration to NVS.
- * @param node_id The unique enum ID of the node.
- * @param config Pointer to the configuration data.
- */
-void nvs_save_node_config(uint8_t node_id, const struct node_config_data *config);
-
-/**
- * @brief Load all node configurations from NVS and update runtime pointers.
- * 
- * Iterates through all nodes. If NVS data exists, updates the node's
- * timeout and navigation maps (click_map/hold_map).
- */
-void nvs_load_runtime_config(void);
-
-// System Config & Reset
-
-/**
- * @brief Save system-wide settings.
- * @param config Pointer to system config struct.
- */
-void nvs_save_system_config(const struct system_config *config);
-
-/**
- * @brief Load system-wide settings.
- * @param config Pointer to struct to populate.
- * @return 0 on success, -ENOENT if not found.
- */
-int nvs_load_system_config(struct system_config *config);
-
-/**
- * @brief Wipe all data from NVS (Factory Reset).
- * 
- * Deletes all node configs and system config.
- */
 void nvs_wipe_all(void);
+int nvs_write_byte(uint16_t id, uint8_t value);
+int nvs_read_byte(uint16_t id, uint8_t *value);
+#else
+/* Stubs for optional NVS */
+static inline int nvs_init_fs(void) { return 0; }
+static inline void nvs_wipe_all(void) {}
+static inline int nvs_write_byte(uint16_t id, uint8_t value) { return 0; }
+static inline int nvs_read_byte(uint16_t id, uint8_t *value) { return -1; }
+#endif
 
 #endif // NVS_MANAGER_H

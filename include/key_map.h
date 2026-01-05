@@ -29,14 +29,16 @@ enum fsm_node_id {
     NODE_BEACON,        /**< Periodic flash (future) */
     
     /* Strobe States */
-    NODE_STROBE,        /**< Generic strobe entry */
+    NODE_STROBE,        /**< Generic strobe entry (Variable Hz) */
+    NODE_PARTY_STROBE,  /**< Freeze-motion strobe (Short pulse) */
     NODE_STROBE_TACTICAL,
     NODE_STROBE_CANDLE,
     
     /* Config/Feedback States */
+    NODE_CONFIG_RAMP,   /**< Config menu for Ramp settings */
+    NODE_AUX_CONFIG,    /**< AUX LED mode config (7C from OFF) */
     NODE_BLINK,         /**< Visual feedback blink */
     NODE_FACTORY_RESET, /**< Wipe settings and reboot */
-    NODE_SWEEP,         /**< Cyclic sine wave demo (legacy) */
     
     NODE_COUNT          /**< Must be last */
 };
@@ -53,6 +55,10 @@ extern struct fsm_node node_turbo;
 extern struct fsm_node node_lockout;
 extern struct fsm_node node_battcheck;
 extern struct fsm_node node_blink;
+extern struct fsm_node node_strobe;
+extern struct fsm_node node_party_strobe;
+extern struct fsm_node node_config_ramp;
+extern struct fsm_node node_aux_config;
 
 /**
  * @brief Initialize key map (parse Kconfig, setup timers).
@@ -70,6 +76,12 @@ struct fsm_node *get_start_node(void);
  * @return PWM value 0-255.
  */
 uint8_t key_map_get_current_pwm(void);
+
+/**
+ * @brief Get the current strobe frequency index (0-255).
+ * @return Frequency index.
+ */
+uint8_t key_map_get_strobe_freq(void);
 
 /**
  * @brief Get the current brightness index.

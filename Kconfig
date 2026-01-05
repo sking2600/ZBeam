@@ -89,11 +89,11 @@ config ZBEAM_HOLD_DURATION_MS
 
 config ZBEAM_MAX_NAV_SLOTS
 	int "Maximum tap count for navigation"
-	default 5
+	default 8
 	range 1 10
 	help
 	  Maximum number of sequential taps supported for navigation.
-	  Index 0 = 1 tap, Index 4 = 5 taps.
+	  Index 0 = 1 tap, Index 6 = 7 taps (AUX config).
 
 endmenu # Input Handling
 
@@ -198,13 +198,65 @@ config ZBEAM_MAX_PWM_LEVELS
 	help
 	  Maximum entries parsed from ZBEAM_PWM_VALUES.
 
+config ZBEAM_STROBE_MIN_FREQ
+    int "Minimum Strobe Frequency (Hz)"
+    default 2
+    help
+      Minimum strobe frequency (slowest).
+
+config ZBEAM_STROBE_MAX_FREQ
+    int "Maximum Strobe Frequency (Hz)"
+    default 80
+    help
+      Maximum strobe frequency (fastest).
+
+config ZBEAM_STROBE_DEFAULT_FREQ
+    int "Default Strobe Frequency (Hz)"
+    default 12
+    help
+      Default strobe frequency on boot/reset.
+
+config ZBEAM_STROBE_WAVEFORM_SAWTOOTH
+    bool "Use Sawtooth Wave Strobe"
+    default y
+    help
+      If enabled, strobe uses a sawtooth waveform (Ramp Up -> Hard Drop) logic.
+      Uses software segmentation to approximate the shape.
+
+config ZBEAM_STROBE_USE_ALC_BRIGHTNESS
+    bool "Use Active Level for Strobe Brightness"
+    default y
+    help
+      If enabled, strobe flashes at the current brightness level (memorized).
+      If disabled, strobe always flashes at 100% (255).
+
+config ZBEAM_BRIGHTNESS_FLOOR
+    int "Brightness Floor (1-255)"
+    default 1
+    range 1 255
+
+config ZBEAM_BRIGHTNESS_CEILING
+    int "Brightness Ceiling (1-255)"
+    default 255
+    range 1 255
+
+config ZBEAM_BRIGHTNESS_SWEEP_DURATION_MS
+    int "Brightness Sweep Duration (ms)"
+    default 2000
+    help
+      Time to sweep brightness from floor to ceiling.
+
+config ZBEAM_STROBE_SWEEP_DURATION_MS
+    int "Strobe Sweep Duration (ms)"
+    default 3000
+    help
+      Time to sweep strobe frequency from min to max.
+
 config ZBEAM_SWEEP_DURATION_MS
-	int "Sweep duration (ms)"
-	default 3000
-	range 500 10000
+	int "Sweep Duration (ms)"
+	default 2000
 	help
-	  Total time to sweep from floor to ceiling (0 to 255).
-	  Default 3000ms = 3 seconds.
+	  Time to sweep from floor to ceiling.
 
 config ZBEAM_SWEEP_SPEED_MS
 	int "Sweep cycle speed (ms per step)"
@@ -242,6 +294,19 @@ config ZBEAM_THREAD_ANALYZER_INTERVAL_SEC
 	  Interval between thread analyzer reports.
 
 endmenu # Debug and Profiling
+
+menu "Data Storage"
+
+config ZBEAM_NVS_ENABLED
+	bool "Enable NVS Storage"
+	default n
+	select FLASH
+	select FLASH_MAP
+	select NVS
+	help
+	  Enable Non-Volatile Storage (NVS) for persisting settings.
+
+endmenu # Data Storage
 
 endmenu # ZBeam Application
 
