@@ -21,12 +21,12 @@ extern struct fsm_node node_a;
 extern struct fsm_node node_b;
 extern struct fsm_node node_off; // Satisfy extern in fsm_engine.c
 
-static struct fsm_node *cb_goto_b(struct fsm_node *curr) {
+static struct fsm_node *cb_goto_b(struct fsm_node *curr, int count) {
     click_callback_count++;
     return &node_b;
 }
 
-static struct fsm_node *cb_stay(struct fsm_node *curr) {
+static struct fsm_node *cb_stay(struct fsm_node *curr, int count) {
     click_callback_count++;
     return NULL;
 }

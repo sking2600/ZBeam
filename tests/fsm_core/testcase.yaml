@@ -1,0 +1,14 @@
+common:
+  platform_allow: [esp32c3_supermini]
+  tags:
+    - zbeam
+    - fsm
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - ".*ZBeam.*"
+tests:
+  fsm.core:
+    extra_configs:
+      - CONFIG_ZBEAM_DEFAULT_UI_MODE_ADVANCED=y

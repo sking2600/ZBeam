@@ -1,0 +1,11 @@
+common:
+  platform_allow: [esp32c3_supermini]
+  tags:
+    - zbeam
+    - logic
+  harness: unit
+tests:
+  logic.nvs:
+    min_ram: 16
+    extra_configs:
+      - CONFIG_ZBEAM_NVS_ENABLED=y
