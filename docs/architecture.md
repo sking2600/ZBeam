@@ -87,9 +87,13 @@ ZBeam supports smooth linear ramping with configurable floors and ceilings.
 ## Additional Subsystems (Phase 4 & 5)
 
 ### 8. Config Menu System
-*   **Generic Architecture**: Allows any node to spawn a "Blink-Buzz" config menu.
-*   **Callback-Driven**: `struct config_item` now supports function pointers (`apply_cb`) for modular setting updates.
-*   **Persistence**: Automatically saves confirmed values to specific NVS IDs.
+*   **Anduril-Style Sequential Menus**: Implements the "Blink-Buzz" configuration flow.
+*   **States**:
+    *   `NODE_CONFIG_FLOOR`: Buzzes for clicks to set minimum level.
+    *   `NODE_CONFIG_CEILING`: Buzzes for clicks to set maximum level (Inverted: 256-N).
+*   **Generic Input**: Uses `any_click_callback` in the FSM engine to handle arbitrary numbers of taps.
+*   **Persistence**: Automatically saves confirmed values to specific NVS IDs (`NVS_ID_RAMP_FLOOR`, `NVS_ID_RAMP_CEILING`).
+*   **Future**: Extensible via `ZMetric` serial protocol for USB-side tuning.
 
 ### 9. Thermal Regulation (Stub)
 *   **Component**: `lib/thermal_manager.c`
@@ -144,6 +148,7 @@ west build -b native_sim -t run
 ### Near-Term (Priority)
 | Task | Status | Notes |
 |------|--------|-------|
+| **Ramp Config (7H)** | ✅ Implemented | Floor/Ceiling setup with visual buzz feedback |
 | **Hardware LED Verification** | ⏳ Pending | Verify ON/OFF, ramping, strobe on physical device |
 | **AUX Mode Hardware Test** | ⏳ Pending | Test 7C cycles modes (requires SK6812 wiring) |
 | **NVS Persistence Test** | ⏳ Pending | Verify settings survive power cycle |

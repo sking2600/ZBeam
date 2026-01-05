@@ -151,8 +151,8 @@ At floor → Reverse direction (or blink)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Ramp Floor Config | ⏳ | Set minimum brightness |
-| Ramp Ceiling Config | ⏳ | Set maximum brightness |
+| Ramp Floor Config | ✅ | 7H from ON: Set minimum brightness |
+| Ramp Ceiling Config | ✅ | 7H from ON: Set max brightness (Inverted) |
 | Stepped vs Smooth Toggle | ⏳ | 3C while ON |
 | Simple/Advanced UI Toggle | ⏳ | 10H from OFF |
 | Factory Reset | ✅ | 5C from OFF |
@@ -200,7 +200,7 @@ At floor → Reverse direction (or blink)
 | **2H** | **Ramp Down** | Decrease Brightness | Release to lock |
 | **2C** | **Turbo** | Jump to Ceiling Level | Double-click for max power |
 | **4C** | **Strobe Mode** | **Impl** | Variable Hz (1H shift). Party Strobe. **Configurable Waveform (Sine/Square)** via Kconfig. |
-| **5H** | **Config Menu** | **Impl** | Global config system. Ramp Floor/Ceiling configurable. <br> *Temporary Mapping for Testing* <br> 1. Blinks Item # <br> 2. Buzzes (Wait) <br> 3. Click to set value |
+| **7H** | **Ramp Config** | **Impl** | Enter sequential menu: 1. Floor 2. Ceiling |
 
 ---
 
