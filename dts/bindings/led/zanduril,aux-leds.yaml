@@ -1,0 +1,29 @@
+description: |
+  ZBeam AUX LED Controller.
+  Defines a logical controller for secondary (AUX) LEDs, supporting
+  Single-color, RGB, and Addressable types.
+
+compatible: "zanduril,aux-leds"
+
+include: base.yaml
+
+properties:
+  aux-type:
+    type: string
+    required: true
+    enum:
+      - "single"
+      - "rgb"
+      - "ws2812"
+    description: Hardware type of the AUX LED(s).
+
+  gpios:
+    type: phandle-array
+    required: false
+    description: GPIO pin(s) for single or RGB types.
+
+  # Future expansion for RGB/WS2812 patterns
+  default-mode:
+    type: int
+    default: 0
+    description: Initial AUX mode on boot (0=Off, 1=Low, 2=High, 3=Blink)

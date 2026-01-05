@@ -16,10 +16,16 @@
 
 
 
+	chosen {
+		zephyr,console = &usb_serial;
+		zephyr,shell-uart = &usb_serial;
+	};
+
 	pwmleds {
 		compatible = "pwm-leds";
+
 		pwm_led_blue: pwm_led_0 {
-			pwms = <&ledc0 0 1000000 PWM_POLARITY_INVERTED>;
+			pwms = <&ledc0 1 1000000 PWM_POLARITY_INVERTED>;
 			label = "Blue PWM LED";
 		};
 	};
@@ -27,9 +33,12 @@
 };
 
 &user_button1 {
+	status = "okay";
 	gpios = <&gpio0 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 	zephyr,code = <INPUT_KEY_0>;
 };
+
+
 
 / {
 	gpio_keys {
@@ -40,7 +49,11 @@
 &pinctrl {
 	ledc0_default: ledc0_default {
 		group1 {
-			pinmux = <LEDC_CH0_GPIO8>;
+			pinmux = <LEDC_CH1_GPIO7>; /* Move main beam to GPIO7 (Ch1) */
+			output-enable;
+		};
+		group2 {
+			pinmux = <LEDC_CH0_GPIO8>; /* Aux LED on GPIO8 (Ch0) */
 			output-enable;
 		};
 	};
@@ -56,7 +69,67 @@
 		reg = <0x0>;
 		timer = <0>;
 	};
+	channel1@1 {
+		reg = <0x1>;
+		timer = <0>;
+	};
 };
+
+/ {
+    /* AUX LED Controller (PWM-based) */
+    aux_pwm: aux_pwm {
+        compatible = "pwm-leds";
+        aux_led: aux_path {
+             pwms = <&ledc0 0 10000 PWM_POLARITY_INVERTED>;
+             label = "Aux LED";
+        };
+    };
+
+
+	aliases {
+		pwm-led0 = &pwm_led_blue;
+		sw0 = &user_button1;
+	};
+
+
+
+};
+
+
+/* Enable Internal Temp Sensor */
+&coretemp {
+    status = "okay";
+};
+
+
+/* Enable ADC for Battery/Thermistors */
+&adc0 {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    battery_sense: channel@0 {
+        reg = <0>;
+        zephyr,gain = "ADC_GAIN_1_4";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,resolution = <12>;
+    };
+};
+
+/ {
+    zephyr,user {
+        io-channels = <&adc0 0>;
+        io-channel-names = "BATT_SENSE";
+        zbeam,battery-divider-factor = <3125>; /* (R_high + R_low) / R_low * 1000 */
+        
+        /* Main Beam Emitters */
+        pwms = <&ledc0 1 1000000 PWM_POLARITY_INVERTED>;
+        emitter-names = "main";
+    };
+};
+
+
 
 &usb_serial {
 	status = "okay";

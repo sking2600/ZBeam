@@ -32,7 +32,7 @@ struct fsm_node; // Forward decl
  * @param self The current node.
  * @return NULL to stay/continue normal processing, or a pointer to a new node to force a transition.
  */
-typedef struct fsm_node* (*fsm_callback_t)(struct fsm_node *self);
+typedef struct fsm_node* (*fsm_callback_t)(struct fsm_node *self, int count);
 
 /**
  * @brief Runtime FSM Node definition.
@@ -55,8 +55,13 @@ struct fsm_node {
     // Release Callback: Triggered when a HOLD is released
     fsm_callback_t release_callback;
 
+    // Generic Callbacks (Called if count > MAX_NAV_SLOTS or no specific map exists)
+    fsm_callback_t any_click_callback;
+    fsm_callback_t any_hold_callback;
+
     uint32_t timeout_ms;               // Milliseconds of inactivity to return to Home (0 = never)
     bool timeout_reverts;              // If true, timeout returns to PREVIOUS node instead of Home.
+    struct fsm_node *timeout_node;     // If set, timeout transitions here instead of Home/Previous.
 };
 
 /**

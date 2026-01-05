@@ -66,14 +66,14 @@ static void hold_timer_handler(struct k_timer *timer_id)
 
 static void process_key_event(int value)
 {
-    LOG_INF("Input raw: %d", value);
+    // LOG_INF("Input raw: %d", value);
     if (value == 1) {  /* Key Down */
         switch (current_state) {
         case STATE_IDLE:
             click_count = 1;
             current_state = STATE_PRESSED;
             k_timer_start(&hold_timer, K_MSEC(hold_duration_ms), K_NO_WAIT);
-            LOG_INF("State: IDLE -> PRESSED");
+            // LOG_INF("State: IDLE -> PRESSED");
             break;
 
         case STATE_WAIT_TIMEOUT:
@@ -81,7 +81,7 @@ static void process_key_event(int value)
             click_count++;
             current_state = STATE_PRESSED;
             k_timer_start(&hold_timer, K_MSEC(hold_duration_ms), K_NO_WAIT);
-            LOG_INF("State: WAIT -> PRESSED (count=%d)", click_count);
+            // LOG_INF("State: WAIT -> PRESSED (count=%d)", click_count);
             break;
 
         case STATE_PRESSED:
@@ -98,11 +98,11 @@ static void process_key_event(int value)
                 click_count = 0;
                 is_holding = false;
                 current_state = STATE_IDLE;
-                LOG_INF("State: PRESSED -> IDLE (Hold Release)");
+                // LOG_INF("State: PRESSED -> IDLE (Hold Release)");
             } else {
                 current_state = STATE_WAIT_TIMEOUT;
                 k_timer_start(&click_timer, K_MSEC(click_timeout_ms), K_NO_WAIT);
-                LOG_INF("State: PRESSED -> WAIT");
+                // LOG_INF("State: PRESSED -> WAIT");
             }
         } else {
             LOG_WRN("Ignored release in state %d", current_state);
@@ -113,10 +113,15 @@ static void process_key_event(int value)
 /* Zephyr Input Subsystem Callback */
 static void input_cb(struct input_event *evt, void *user_data)
 {
+    // if (evt->type == INPUT_EV_KEY) {
+    //    LOG_WRN("Evt: type=%d code=%d val=%d", evt->type, evt->code, evt->value);
+    // }
+
     if (evt->type == INPUT_EV_KEY && evt->code == INPUT_KEY_0) {
         process_key_event(evt->value);
     }
 }
+
 INPUT_CALLBACK_DEFINE(NULL, input_cb, NULL);
 
 void multi_tap_configure(uint32_t click_ms, uint32_t hold_ms)

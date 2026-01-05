@@ -18,6 +18,15 @@
 #define NVS_ID_RAMP_FLOOR    1
 #define NVS_ID_RAMP_CEILING  2
 #define NVS_ID_MEM_BRIGHTNESS 3
+#define NVS_ID_UI_MODE        4
+#define NVS_ID_MEMORY_MODE    5
+#define NVS_ID_MANUAL_MEM_LEVEL 6
+#define NVS_ID_HYBRID_TIMEOUT   7
+#define NVS_ID_THERMAL_LIMIT    8
+#define NVS_ID_TEMP_CALIB_OFFSET 9
+#define NVS_ID_BATT_CALIB_OFFSET 10
+#define NVS_ID_RAMP_STYLE 11
+
 
 #ifdef CONFIG_ZBEAM_NVS_ENABLED
 /* Real Prototypes */

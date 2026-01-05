@@ -6,12 +6,15 @@ project(ZBeam)
 # Core application sources
 target_sources(app PRIVATE 
     src/main.c
-    src/key_map.c
+    src/ui_actions.c
+    src/ui_simple.c
+    src/ui_advanced.c
+    src/batt_check.c
+    src/channel_manager.c
     lib/fsm_engine.c
     lib/fsm_worker.c
     lib/multi_tap_input.c
     lib/safety_monitor.c
-    src/batt_check.c
     lib/thermal_manager.c
     lib/pm_manager.c
     lib/aux_manager.c

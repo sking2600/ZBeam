@@ -7,6 +7,8 @@
 
 LOG_MODULE_REGISTER(NVS_Manager, LOG_LEVEL_INF);
 
+#ifdef CONFIG_ZBEAM_NVS_ENABLED
+
 static struct nvs_fs fs;
 
 #define NVS_PARTITION		storage_partition
@@ -82,3 +84,5 @@ void nvs_wipe_all(void)
     }
     LOG_INF("NVS Wiped (IDs 0-20)");
 }
+
+#endif /* CONFIG_ZBEAM_NVS_ENABLED */

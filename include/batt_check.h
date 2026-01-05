@@ -9,6 +9,11 @@
 #include <stdint.h>
 
 /**
+ * @brief Initialize battery monitoring hardware.
+ */
+void batt_init(void);
+
+/**
  * @brief Read the current battery voltage in millivolts.
  * 
  * This function is defined as WEAK in the source, allowing tests
@@ -28,5 +33,12 @@ uint16_t batt_read_voltage_mv(void);
  * @param minor Pointer to store minor blinks (decimal part).
  */
 void batt_calculate_blinks(uint16_t mv, uint8_t *major, uint8_t *minor);
+
+/**
+ * @brief Calibrate the battery reading.
+ * 
+ * @param actual_mv The known actual voltage in mV.
+ */
+void batt_calibrate_voltage(uint16_t actual_mv);
 
 #endif /* BATT_CHECK_H */

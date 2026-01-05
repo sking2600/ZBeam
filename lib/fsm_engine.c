@@ -20,7 +20,7 @@ static struct k_timer inactivity_timer;
 static volatile bool emergency_shutdown_active = false;
 
 /* External node from key_map.c */
-extern struct fsm_node node_off;
+/* External node dependency removed. Uses home_node. */
 
 static void reset_inactivity_timer(void)
 {
@@ -31,7 +31,10 @@ static void reset_inactivity_timer(void)
 
 static void inactivity_timer_handler(struct k_timer *timer_id)
 {
-    if (current_node && current_node->timeout_reverts && previous_node) {
+    if (current_node && current_node->timeout_node) {
+        LOG_INF("FSM: Timeout -> Next [%s]", current_node->timeout_node->name);
+        fsm_transition_to(current_node->timeout_node);
+    } else if (current_node && current_node->timeout_reverts && previous_node) {
         LOG_INF("FSM: Timeout -> Previous [%s]", previous_node->name);
         fsm_transition_to(previous_node);
     } else {
@@ -82,14 +85,16 @@ static void dispatch_input(uint8_t type, int count)
 {
     if (!current_node) return;
 
+    LOG_INF("Dispatch: type=%d, count=%d (Node: %s)", type, count, current_node->name);
     reset_inactivity_timer();
+
 
     int index = count - 1;
 
     /* Handle HOLD_RELEASE */
     if (type == MSG_INPUT_HOLD_RELEASE) {
         if (current_node->release_callback) {
-            struct fsm_node *next = current_node->release_callback(current_node);
+            struct fsm_node *next = current_node->release_callback(current_node, 0);
             if (next) fsm_transition_to(next);
         }
         return;
@@ -105,33 +110,45 @@ static void dispatch_input(uint8_t type, int count)
     fsm_callback_t cb = NULL;
 
     if (type == MSG_INPUT_TAP) {
-        cb = current_node->click_callbacks[index];
-        if (cb) {
-            next_node = cb(current_node);
+        if (count >= 1 && count <= MAX_NAV_SLOTS) {
+            cb = current_node->click_callbacks[index];
+            if (cb) {
+                next_node = cb(current_node, count);
+                if (next_node) { fsm_transition_to(next_node); return; }
+            }
+            next_node = current_node->click_map[index];
             if (next_node) {
+                LOG_INF("Click[%d]: -> %s", count, next_node->name);
                 fsm_transition_to(next_node);
                 return;
             }
         }
-        next_node = current_node->click_map[index];
-        if (next_node) {
-            LOG_INF("Click[%d]: -> %s", count, next_node->name);
-            fsm_transition_to(next_node);
+        
+        /* Fallback to generic click callback */
+        if (current_node->any_click_callback) {
+            next_node = current_node->any_click_callback(current_node, count);
+            if (next_node) { fsm_transition_to(next_node); return; }
         }
     }
     else if (type == MSG_INPUT_HOLD_START) {
-        cb = current_node->hold_callbacks[index];
-        if (cb) {
-            next_node = cb(current_node);
+        if (count >= 1 && count <= MAX_NAV_SLOTS) {
+            cb = current_node->hold_callbacks[index];
+            if (cb) {
+                next_node = cb(current_node, count);
+                if (next_node) { fsm_transition_to(next_node); return; }
+            }
+            next_node = current_node->hold_map[index];
             if (next_node) {
+                LOG_INF("Hold[%d]: -> %s", count, next_node->name);
                 fsm_transition_to(next_node);
                 return;
             }
         }
-        next_node = current_node->hold_map[index];
-        if (next_node) {
-            LOG_INF("Hold[%d]: -> %s", count, next_node->name);
-            fsm_transition_to(next_node);
+
+        /* Fallback to generic hold callback */
+        if (current_node->any_hold_callback) {
+            next_node = current_node->any_hold_callback(current_node, count);
+            if (next_node) { fsm_transition_to(next_node); return; }
         }
     }
 }
@@ -148,7 +165,9 @@ void fsm_process_timer(const struct zbeam_msg *msg)
 
     switch (msg->type) {
     case MSG_TIMEOUT_INACTIVITY:
-        if (current_node && current_node->timeout_reverts && previous_node) {
+        if (current_node && current_node->timeout_node) {
+             fsm_transition_to(current_node->timeout_node);
+        } else if (current_node && current_node->timeout_reverts && previous_node) {
             fsm_transition_to(previous_node);
         } else {
             fsm_transition_to(home_node);
@@ -169,7 +188,7 @@ void fsm_emergency_off(void)
     LOG_WRN("FSM: EMERGENCY OFF!");
     emergency_shutdown_active = true;
     k_timer_stop(&inactivity_timer);
-    current_node = &node_off;
+    current_node = home_node;
     if (current_node->action_routine) {
         current_node->action_routine();
     }

@@ -16,31 +16,21 @@ config PWM_RAMP_TABLE
 
 if PWM_RAMP_TABLE
 
-choice PWM_RAMP_RESOLUTION_SELECT
-	prompt "PWM Ramp Table Resolution"
-	default PWM_RAMP_RESOLUTION_13BIT
-	help
-	  Select the PWM resolution for the ramp lookup table.
-
 config PWM_RAMP_RESOLUTION_13BIT
-	bool "13-bit (ESP32-C3, ESP32)"
+	bool
+	default y if SOC_SERIES_ESP32C3 || SOC_SERIES_ESP32 || SOC_SERIES_ESP32S2 || SOC_SERIES_ESP32S3 || SOC_SERIES_NRF52X
 
 config PWM_RAMP_RESOLUTION_10BIT
-	bool "10-bit (STM32, nRF52)"
+	bool
+	default y if SOC_SERIES_STM32F4X || SOC_SERIES_STM32L4X
 
 config PWM_RAMP_RESOLUTION_8BIT
-	bool "8-bit (AVR, basic MCUs)"
-
-endchoice
+	bool
+	default y if !PWM_RAMP_RESOLUTION_13BIT && !PWM_RAMP_RESOLUTION_10BIT
 
 config PWM_RAMP_ESP32_LEDC_INTERPOLATION
-	bool "Use LEDC hardware fade for interpolation (ESP32 only)"
-	default y
-	depends on SOC_SERIES_ESP32C3 || SOC_SERIES_ESP32 || SOC_SERIES_ESP32S2 || SOC_SERIES_ESP32S3
-	help
-	  On ESP32 chips, use the LEDC hardware fade feature to interpolate
-	  between ramp table values. This reduces CPU overhead by letting
-	  the LEDC peripheral handle smooth transitions.
+	bool
+	default y if SOC_SERIES_ESP32C3 || SOC_SERIES_ESP32 || SOC_SERIES_ESP32S2 || SOC_SERIES_ESP32S3
 
 config PWM_RAMP_INTERPOLATION_STEP
 	int "Ramp table interpolation step size"
@@ -77,7 +67,7 @@ menu "Input Handling"
 
 config ZBEAM_CLICK_TIMEOUT_MS
 	int "Multi-tap click timeout (ms)"
-	default 400
+	default 500
 	help
 	  Time window to wait for additional clicks before finalizing a tap sequence.
 
@@ -89,8 +79,9 @@ config ZBEAM_HOLD_DURATION_MS
 
 config ZBEAM_MAX_NAV_SLOTS
 	int "Maximum tap count for navigation"
-	default 8
+	default 10
 	range 1 10
+
 	help
 	  Maximum number of sequential taps supported for navigation.
 	  Index 0 = 1 tap, Index 6 = 7 taps (AUX config).
@@ -183,6 +174,74 @@ config ZBEAM_VOLTAGE_MAX_MV
 
 endmenu # Safety Thresholds
 
+menu "Default UI Settings"
+
+config ZBEAM_DEFAULT_UI_MODE_ADVANCED
+	bool "Default to Advanced UI"
+	default n
+	help
+	  If enabled, the light starts in Advanced UI mode.
+	  If disabled, it starts in Simple UI mode.
+
+choice ZBEAM_DEFAULT_MEMORY_MODE
+	prompt "Default Memory Mode"
+	default ZBEAM_MEMORY_AUTOMATIC
+	help
+	  Select the default memory behavior for brightness.
+
+	config ZBEAM_MEMORY_AUTOMATIC
+		bool "Automatic (Last Used)"
+	
+	config ZBEAM_MEMORY_MANUAL
+		bool "Manual (Set Level)"
+	
+	config ZBEAM_MEMORY_HYBRID
+		bool "Hybrid (Timer-based)"
+endchoice
+
+config ZBEAM_DEFAULT_MANUAL_MEM_LEVEL
+	int "Default Manual Memory Level (1-255)"
+	default 128
+	range 1 255
+	depends on ZBEAM_DEFAULT_MEMORY_MODE != ZBEAM_MEMORY_AUTOMATIC
+
+config ZBEAM_DEFAULT_HYBRID_MEM_TIMEOUT_MIN
+	int "Default Hybrid Memory Timeout (Minutes)"
+	default 10
+	depends on ZBEAM_DEFAULT_MEMORY_MODE = ZBEAM_MEMORY_HYBRID
+
+config ZBEAM_AUTO_LOCK_TIMEOUT_MIN
+	int "Auto-Lock Timeout (Minutes, 0=Disabled)"
+	default 0
+	help
+	  Automatic lockout after inactivity.
+
+endmenu # Default UI Settings
+
+menu "Ramp Configuration"
+
+choice ZBEAM_DEFAULT_RAMP_STYLE
+	prompt "Default Ramp Style"
+	default ZBEAM_RAMP_SMOOTH
+	help
+	  Select if the light starts with Smooth or Stepped ramping.
+
+	config ZBEAM_RAMP_SMOOTH
+		bool "Smooth (Continuous)"
+	
+	config ZBEAM_RAMP_STEPPED
+		bool "Stepped (Discrete)"
+endchoice
+
+config ZBEAM_STEPPED_RAMP_STEPS
+	int "Number of steps in Stepped Ramp"
+	default 7
+	range 2 150
+	help
+	  Total number of levels in stepped mode (evenly spaced between floor and ceiling).
+
+endmenu # Ramp Configuration
+
 menu "LED Control"
 
 config ZBEAM_PWM_VALUES
@@ -252,6 +311,33 @@ config ZBEAM_STROBE_SWEEP_DURATION_MS
     help
       Time to sweep strobe frequency from min to max.
 
+menu "Thermal Manager"
+	config ZBEAM_THERMAL_LIMIT_DEFAULT
+		int "Default Thermal Limit (C)"
+		default 45
+		help
+		  Target temperature for temperature regulation.
+
+	config ZBEAM_PID_KP
+		int "PID Kp (Proportional) x100"
+		default 50
+		help
+		  Proportional gain scaled by 100.
+
+	config ZBEAM_PID_KI
+		int "PID Ki (Integral) x100"
+		default 2
+		help
+		  Integral gain scaled by 100.
+	
+	config ZBEAM_PID_KD
+		int "PID Kd (Derivative) x100"
+		default 100
+		help
+		  Derivative gain scaled by 100.
+endmenu
+
+
 config ZBEAM_SWEEP_DURATION_MS
 	int "Sweep Duration (ms)"
 	default 2000
@@ -272,6 +358,27 @@ config ZBEAM_BLINK_RETURN_MS
 	  How long to stay in blink state before returning.
 
 endmenu # LED Control
+
+menu "AUX LED Controller"
+config ZBEAM_AUX_TYPE_SINGLE
+	bool
+	default y if !ZBEAM_AUX_TYPE_RGB && !ZBEAM_AUX_TYPE_WS2812
+
+config ZBEAM_AUX_TYPE_RGB
+	bool
+	default n
+
+config ZBEAM_AUX_TYPE_WS2812
+	bool
+	default n
+
+	config ZBEAM_AUX_BLINK_SPEED_MS
+		int "AUX Blink Speed (ms)"
+		default 1000
+		help
+		  Pulse duration for AUX blinking mode.
+endmenu
+
 
 menu "Debug and Profiling"
 
