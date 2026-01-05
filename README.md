@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="zbeam-logo.png" alt="ZBeam Logo" width="300">
+</p>
+
 # ZBeam - Advanced Flashlight Firmware
 
 ZBeam is a high-performance flashlight firmware built on the Zephyr RTOS. It features a sophisticated UI, thermal regulation, battery monitoring, and support for multiple microcontrollers including ESP32-C3, STM32, and more.
