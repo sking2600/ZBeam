@@ -1,0 +1,63 @@
+/*
+ * Copyright (c) 2024 Arrel Neumiller
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/ {
+	aliases {
+		pwm-led0 = &pwm_led_blue;
+		sw0 = &user_button1;
+	};
+
+
+
+	pwmleds {
+		compatible = "pwm-leds";
+		pwm_led_blue: pwm_led_0 {
+			pwms = <&ledc0 0 1000000 PWM_POLARITY_INVERTED>;
+			label = "Blue PWM LED";
+		};
+	};
+
+};
+
+&user_button1 {
+	gpios = <&gpio0 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+	zephyr,code = <INPUT_KEY_0>;
+};
+
+/ {
+	gpio_keys {
+		debounce-interval-ms = <50>;
+	};
+};
+
+&pinctrl {
+	ledc0_default: ledc0_default {
+		group1 {
+			pinmux = <LEDC_CH0_GPIO8>;
+			output-enable;
+		};
+	};
+};
+
+&ledc0 {
+	pinctrl-0 = <&ledc0_default>;
+	pinctrl-names = "default";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	channel0@0 {
+		reg = <0x0>;
+		timer = <0>;
+	};
+};
+
+&usb_serial {
+	status = "okay";
+};

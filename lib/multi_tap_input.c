@@ -1,53 +1,55 @@
-// lib/multi_tap_input.c
+/**
+ * @file multi_tap_input.c
+ * @brief Multi-Tap Input Detection Engine.
+ *
+ * Detects clicks, holds, and multi-tap sequences.
+ * Posts events to FSM worker via message queue.
+ */
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/sys/printk.h>
+#include <zephyr/input/input.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
 #include "multi_tap_input.h"
+#include "fsm_worker.h"
+#include "zbeam_msg.h"
 
 LOG_MODULE_REGISTER(MultiTap, LOG_LEVEL_INF);
 
-// --- FSM CONFIGURATION (Hardcoded for maximum stability) ---
-#define CLICK_TIMEOUT_MS 400
-#define HOLD_DURATION_MS 500
-// -----------------------------------------------------------
+/* Timing Configuration */
+static uint32_t click_timeout_ms = CONFIG_ZBEAM_CLICK_TIMEOUT_MS;
+static uint32_t hold_duration_ms = CONFIG_ZBEAM_HOLD_DURATION_MS;
 
-// --- FSM STATE DEFINITIONS ---
+/* FSM States */
 enum multi_tap_state {
-    STATE_IDLE,         // Waiting for first press
-    STATE_PRESSED,      // Button is currently down
-    STATE_WAIT_RELEASE, // Waiting for button release to count tap
-    STATE_WAIT_TIMEOUT, // Waiting for click timeout to finalize action
+    STATE_IDLE,
+    STATE_PRESSED,
+    STATE_WAIT_TIMEOUT,
 };
 
-// --- FSM VARIABLES ---
+/* State Variables */
 static enum multi_tap_state current_state = STATE_IDLE;
 static int click_count = 0;
 static bool is_holding = false;
-static multi_tap_input_handler_t action_handler = NULL;
 
-// --- KERNEL OBJECTS ---
+/* Timers */
 static struct k_timer click_timer;
 static struct k_timer hold_timer;
 
-// --- TIMER HANDLERS (These were the source of the syntax errors previously) ---
+static void post_event(uint8_t type, uint8_t count)
+{
+    struct zbeam_msg msg = {
+        .type = type,
+        .count = count,
+    };
+    fsm_worker_post_msg(&msg);
+}
 
 static void click_timer_handler(struct k_timer *timer_id)
 {
-    // Click timeout occurred while waiting for another tap. Finalize the action.
     if (current_state == STATE_WAIT_TIMEOUT) {
-        LOG_DBG("Click timeout. Finalizing action: %d taps.", click_count);
-        
-        // Report the final action to the application
-        struct multi_tap_input_action action = {
-            .count = click_count,
-            .is_hold = false
-        };
-        if (action_handler) {
-            action_handler(&action);
-        }
-
-        // Reset the FSM
+        post_event(MSG_INPUT_TAP, click_count);
         click_count = 0;
         is_holding = false;
         current_state = STATE_IDLE;
@@ -56,99 +58,77 @@ static void click_timer_handler(struct k_timer *timer_id)
 
 static void hold_timer_handler(struct k_timer *timer_id)
 {
-    // Hold timeout occurred while button is still pressed.
     if (current_state == STATE_PRESSED) {
-        LOG_DBG("Hold timeout. Registering hold.");
         is_holding = true;
-        // Do not change state; remain STATE_PRESSED until release.
+        post_event(MSG_INPUT_HOLD_START, click_count);
     }
 }
 
-// --- FSM IMPLEMENTATION (The core logic) ---
-
-void multi_tap_input_process_key(int value)
+static void process_key_event(int value)
 {
-    // Key Down (Press)
-    if (value == 1) {
+    LOG_INF("Input raw: %d", value);
+    if (value == 1) {  /* Key Down */
         switch (current_state) {
-            case STATE_IDLE:
-                // First press: Start counting and start the hold timer.
-                click_count = 1;
-                current_state = STATE_PRESSED;
-                k_timer_start(&hold_timer, K_MSEC(HOLD_DURATION_MS), K_NO_WAIT);
-                LOG_DBG("State: PRESSED (Count: 1). Hold timer started.");
-                break;
+        case STATE_IDLE:
+            click_count = 1;
+            current_state = STATE_PRESSED;
+            k_timer_start(&hold_timer, K_MSEC(hold_duration_ms), K_NO_WAIT);
+            LOG_INF("State: IDLE -> PRESSED");
+            break;
 
-            case STATE_WAIT_TIMEOUT:
-                // Press before timeout: Cancel the timeout, count the tap, and wait for release.
-                k_timer_stop(&click_timer);
-                click_count++;
-                current_state = STATE_PRESSED;
-                k_timer_start(&hold_timer, K_MSEC(HOLD_DURATION_MS), K_NO_WAIT);
-                LOG_DBG("State: PRESSED (Count: %d). Hold timer restarted.", click_count);
-                break;
-            
-            case STATE_PRESSED:
-            case STATE_WAIT_RELEASE:
-                // Ignore key down events while already pressed or waiting for release.
-                LOG_DBG("State: Already Pressed or Waiting for Release. Ignored key down.");
-                break;
+        case STATE_WAIT_TIMEOUT:
+            k_timer_stop(&click_timer);
+            click_count++;
+            current_state = STATE_PRESSED;
+            k_timer_start(&hold_timer, K_MSEC(hold_duration_ms), K_NO_WAIT);
+            LOG_INF("State: WAIT -> PRESSED (count=%d)", click_count);
+            break;
+
+        case STATE_PRESSED:
+            LOG_WRN("Ignored press while PRESSED");
+            break;
         }
     }
+    else {  /* Key Up */
+        if (current_state == STATE_PRESSED) {
+            k_timer_stop(&hold_timer);
 
-    // Key Up (Release)
-    else if (value == 0) {
-        switch (current_state) {
-            case STATE_PRESSED:
-                // Stop the hold timer immediately upon release
-                k_timer_stop(&hold_timer);
-
-                if (is_holding) {
-                    // Holding completed: Finalize the action immediately.
-                    LOG_DBG("Release after HOLD. Finalizing action: %d taps + HOLD.", click_count);
-                    
-                    struct multi_tap_input_action action = {
-                        .count = click_count,
-                        .is_hold = true
-                    };
-                    if (action_handler) {
-                        action_handler(&action);
-                    }
-                    
-                    // Reset FSM
-                    click_count = 0;
-                    is_holding = false;
-                    current_state = STATE_IDLE;
-                
-                } else {
-                    // Simple tap: Start the click timeout to wait for another tap.
-                    current_state = STATE_WAIT_TIMEOUT;
-                    k_timer_start(&click_timer, K_MSEC(CLICK_TIMEOUT_MS), K_NO_WAIT);
-                    LOG_DBG("State: WAIT_TIMEOUT. Click timer started.");
-                }
-                break;
-            
-            case STATE_WAIT_RELEASE:
-            case STATE_WAIT_TIMEOUT:
-            case STATE_IDLE:
-                // Ignore key up events in all other states.
-                LOG_DBG("State: Release ignored.");
-                break;
+            if (is_holding) {
+                post_event(MSG_INPUT_HOLD_RELEASE, click_count);
+                click_count = 0;
+                is_holding = false;
+                current_state = STATE_IDLE;
+                LOG_INF("State: PRESSED -> IDLE (Hold Release)");
+            } else {
+                current_state = STATE_WAIT_TIMEOUT;
+                k_timer_start(&click_timer, K_MSEC(click_timeout_ms), K_NO_WAIT);
+                LOG_INF("State: PRESSED -> WAIT");
+            }
+        } else {
+            LOG_WRN("Ignored release in state %d", current_state);
         }
     }
 }
 
-// --- INITIALIZATION ---
-
-void multi_tap_input_init(multi_tap_input_handler_t handler)
+/* Zephyr Input Subsystem Callback */
+static void input_cb(struct input_event *evt, void *user_data)
 {
-    // 1. Set the application's callback handler
-    action_handler = handler;
-    
-    // 2. Initialize timer structures and link handlers
+    if (evt->type == INPUT_EV_KEY && evt->code == INPUT_KEY_0) {
+        process_key_event(evt->value);
+    }
+}
+INPUT_CALLBACK_DEFINE(NULL, input_cb, NULL);
+
+void multi_tap_configure(uint32_t click_ms, uint32_t hold_ms)
+{
+    click_timeout_ms = click_ms;
+    hold_duration_ms = hold_ms;
+}
+
+void multi_tap_input_init(void)
+{
     k_timer_init(&click_timer, click_timer_handler, NULL);
     k_timer_init(&hold_timer, hold_timer_handler, NULL);
-
-    LOG_INF("Multi-Tap Input Core initialized. Click Timeout: %dms, Hold Duration: %dms",
-            CLICK_TIMEOUT_MS, HOLD_DURATION_MS);
+    LOG_INF("Multi-Tap init: click=%dms hold=%dms", 
+            click_timeout_ms, hold_duration_ms);
 }

@@ -1,0 +1,248 @@
+# ZBeam Application Configuration
+
+# ============================================================================
+# MCU/Platform-Specific Configuration
+# ============================================================================
+menu "MCU-Specific Settings"
+
+menu "PWM Ramp Table"
+
+config PWM_RAMP_TABLE
+	bool "Enable PWM ramp table for LED brightness"
+	default y
+	help
+	  Enable perception-corrected PWM ramp table for LED brightness control.
+	  Uses gamma correction for perceptually-linear brightness changes.
+
+if PWM_RAMP_TABLE
+
+choice PWM_RAMP_RESOLUTION_SELECT
+	prompt "PWM Ramp Table Resolution"
+	default PWM_RAMP_RESOLUTION_13BIT
+	help
+	  Select the PWM resolution for the ramp lookup table.
+
+config PWM_RAMP_RESOLUTION_13BIT
+	bool "13-bit (ESP32-C3, ESP32)"
+
+config PWM_RAMP_RESOLUTION_10BIT
+	bool "10-bit (STM32, nRF52)"
+
+config PWM_RAMP_RESOLUTION_8BIT
+	bool "8-bit (AVR, basic MCUs)"
+
+endchoice
+
+config PWM_RAMP_ESP32_LEDC_INTERPOLATION
+	bool "Use LEDC hardware fade for interpolation (ESP32 only)"
+	default y
+	depends on SOC_SERIES_ESP32C3 || SOC_SERIES_ESP32 || SOC_SERIES_ESP32S2 || SOC_SERIES_ESP32S3
+	help
+	  On ESP32 chips, use the LEDC hardware fade feature to interpolate
+	  between ramp table values. This reduces CPU overhead by letting
+	  the LEDC peripheral handle smooth transitions.
+
+config PWM_RAMP_INTERPOLATION_STEP
+	int "Ramp table interpolation step size"
+	default 8
+	range 1 64
+	depends on PWM_RAMP_ESP32_LEDC_INTERPOLATION
+	help
+	  Instead of updating brightness at every table index, skip N entries
+	  and use LEDC hardware fade to interpolate between values.
+	  Higher values = less CPU overhead, but coarser gamma correction.
+	  Recommended: 4-16 for smooth fades with minimal CPU usage.
+
+config PWM_RAMP_DMA
+	bool "Use DMA for PWM ramping"
+	default n
+	help
+	  Use DMA to transfer duty values from the ramp table directly
+	  to the timer's Capture/Compare Register. This provides true
+	  zero-CPU-overhead brightness ramping on MCUs with Timer+DMA.
+	  Currently a stub - requires hardware-specific implementation.
+
+endif # PWM_RAMP_TABLE
+
+endmenu # PWM Ramp Table
+
+endmenu # MCU-Specific Settings
+
+# ============================================================================
+# General Application Configuration
+# ============================================================================
+menu "ZBeam Application"
+
+menu "Input Handling"
+
+config ZBEAM_CLICK_TIMEOUT_MS
+	int "Multi-tap click timeout (ms)"
+	default 400
+	help
+	  Time window to wait for additional clicks before finalizing a tap sequence.
+
+config ZBEAM_HOLD_DURATION_MS
+	int "Hold detection threshold (ms)"
+	default 500
+	help
+	  Duration button must be held to register as a hold event.
+
+config ZBEAM_MAX_NAV_SLOTS
+	int "Maximum tap count for navigation"
+	default 5
+	range 1 10
+	help
+	  Maximum number of sequential taps supported for navigation.
+	  Index 0 = 1 tap, Index 4 = 5 taps.
+
+endmenu # Input Handling
+
+menu "Worker Threads"
+
+config ZBEAM_FSM_MSGQ_DEPTH
+	int "FSM message queue depth"
+	default 8
+	range 4 32
+	help
+	  Number of pending messages before queue blocks.
+	  Should handle bursts of input + timer events.
+
+config ZBEAM_FSM_WORKER_STACK_SIZE
+	int "FSM worker thread stack size (bytes)"
+	default 1024
+	range 512 4096
+	help
+	  Stack size for FSM worker thread. Use thread analyzer to tune.
+
+config ZBEAM_FSM_WORKER_PRIORITY
+	int "FSM worker thread priority"
+	default 7
+	range 0 14
+	help
+	  Cooperative priority. Lower number = higher priority.
+
+config ZBEAM_SAFETY_WORKER_STACK_SIZE
+	int "Safety worker thread stack size (bytes)"
+	default 512
+	range 256 2048
+	help
+	  Stack size for safety monitor thread. Minimal - only reads sensors.
+
+config ZBEAM_SAFETY_RATE_HZ
+	int "Safety monitor check frequency (Hz)"
+	default 10
+	range 1 100
+	help
+	  How often the safety monitor reads sensors and checks limits.
+
+endmenu # Worker Threads
+
+menu "Safety Thresholds"
+
+config ZBEAM_TEMP_WARN_C10
+	int "Temperature warning threshold (0.1°C units)"
+	default 600
+	range 300 800
+	help
+	  Temperature at which thermal warning is triggered.
+	  Value is in 0.1°C units (600 = 60.0°C).
+	  FSM will begin gradual power reduction.
+
+config ZBEAM_TEMP_SHUTDOWN_C10
+	int "Temperature shutdown threshold (0.1°C units)"
+	default 750
+	range 500 900
+	help
+	  Temperature at which emergency shutdown is triggered.
+	  Value is in 0.1°C units (750 = 75.0°C).
+	  Conservative default for LED longevity.
+
+config ZBEAM_CURRENT_MAX_MA
+	int "Maximum current (mA)"
+	default 2500
+	range 500 5000
+	help
+	  Current at which emergency shutdown is triggered.
+	  Default 2500mA (2.5A) is conservative for most LEDs.
+
+config ZBEAM_VOLTAGE_MIN_MV
+	int "Minimum voltage (mV)"
+	default 2900
+	range 2500 3200
+	help
+	  Voltage below which emergency shutdown is triggered.
+	  Default 2900mV is safe LiPo cutoff.
+
+config ZBEAM_VOLTAGE_MAX_MV
+	int "Maximum voltage (mV)"
+	default 4200
+	range 4000 4500
+	help
+	  Voltage above which emergency shutdown is triggered.
+	  Default 4200mV is standard LiPo full charge.
+
+endmenu # Safety Thresholds
+
+menu "LED Control"
+
+config ZBEAM_PWM_VALUES
+	string "Comma-separated PWM levels (0-255)"
+	default "1,10,40,75,100,150,200,255"
+	help
+	  Discrete brightness levels for ramp mode.
+
+config ZBEAM_MAX_PWM_LEVELS
+	int "Maximum number of PWM levels"
+	default 16
+	range 2 32
+	help
+	  Maximum entries parsed from ZBEAM_PWM_VALUES.
+
+config ZBEAM_SWEEP_DURATION_MS
+	int "Sweep duration (ms)"
+	default 3000
+	range 500 10000
+	help
+	  Total time to sweep from floor to ceiling (0 to 255).
+	  Default 3000ms = 3 seconds.
+
+config ZBEAM_SWEEP_SPEED_MS
+	int "Sweep cycle speed (ms per step)"
+	default 10
+	range 1 100
+	help
+	  Time per step in sweep/breathing mode.
+
+config ZBEAM_BLINK_RETURN_MS
+	int "Blink node auto-return timeout (ms)"
+	default 200
+	help
+	  How long to stay in blink state before returning.
+
+endmenu # LED Control
+
+menu "Debug and Profiling"
+
+config ZBEAM_THREAD_ANALYZER
+	bool "Enable thread stack profiling"
+	select THREAD_ANALYZER
+	select THREAD_ANALYZER_AUTO
+	select INIT_STACKS
+	help
+	  Enables periodic reporting of thread stack usage
+	  to verify stack sizes are not over-provisioned.
+	  Note: Manually set CONFIG_THREAD_ANALYZER_USE_LOG=y in prj.conf.
+
+config ZBEAM_THREAD_ANALYZER_INTERVAL_SEC
+	int "Thread analyzer report interval (seconds)"
+	default 30
+	range 5 300
+	depends on ZBEAM_THREAD_ANALYZER
+	help
+	  Interval between thread analyzer reports.
+
+endmenu # Debug and Profiling
+
+endmenu # ZBeam Application
+
+source "Kconfig.zephyr"

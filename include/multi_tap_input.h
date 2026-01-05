@@ -1,31 +1,25 @@
+/**
+ * @file multi_tap_input.h
+ * @brief Multi-Tap Input Detection API.
+ *
+ * Posts input events (tap, hold) to FSM worker via message queue.
+ */
+
 #ifndef MULTI_TAP_INPUT_H
 #define MULTI_TAP_INPUT_H
 
 #include <zephyr/kernel.h>
 
 /**
- * @brief Defines the structure for the final action reported by the library.
+ * @brief Initialize the Multi-Tap Input engine.
  */
-struct multi_tap_input_action {
-    int count;          // Number of clicks detected (1, 2, 3, or more)
-    bool is_hold;       // True if the action included a hold.
-};
+void multi_tap_input_init(void);
 
 /**
- * @brief Type definition for the user-provided callback function.
+ * @brief Configure timing parameters at runtime.
+ * @param click_ms Click timeout in milliseconds.
+ * @param hold_ms Hold duration in milliseconds.
  */
-typedef void (*multi_tap_input_handler_t)(const struct multi_tap_input_action *action);
+void multi_tap_configure(uint32_t click_ms, uint32_t hold_ms);
 
-/**
- * @brief Initializes the Multi-Tap Input core.
- * @param handler The application-defined function to be called when an action is complete.
- */
-void multi_tap_input_init(multi_tap_input_handler_t handler);
-
-/**
- * @brief Processes a raw key event (Down or Up) from any source.
- * @param value 1 for Key Down (Press), 0 for Key Up (Release).
- */
-void multi_tap_input_process_key(int value);
-
-#endif // MULTI_TAP_INPUT_H
+#endif /* MULTI_TAP_INPUT_H */
