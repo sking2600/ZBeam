@@ -4,3 +4,26 @@ zephyr/
 .west/
 *~
 *.swp
+
+# IDE / Editors
+.vscode/
+.idea/
+
+# Compilation / Build
+compile_commands.json
+*.ninja
+*.obj
+*.o
+*.a
+
+# Documentation / Large Files
+docs/*.pdf
+docs/fix_perms.sh
+
+# Build Artifacts
+flash.bin
+twister-out/
+
+# Python
+__pycache__/
+*.py[cod]
